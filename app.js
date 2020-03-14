@@ -26,12 +26,15 @@ var budgetController = (function(){
     }
     var calculateTotal = function(type){
         var sum = 0;
-        console.log(data.allItems[type]);
         data.allItems[type].forEach(function(cur){
             sum += cur.value;
         });
-        data.totals[type] = sum;
-        console.log(data.totals[type]);
+        if(type === 'exp'){
+            data.totals[type] = sum * -1;
+        }
+        else if(type === 'inc'){
+            data.totals[type] = sum;
+        }
         return data.totals[type];
     }
 
@@ -58,7 +61,7 @@ var budgetController = (function(){
             return data;
         }, 
 
-        calcBudget: function(type){
+        calcBudget: function(){
             calculateTotal('inc');
             calculateTotal('exp');
             data.budget = data.totals.inc - data.totals.exp;
@@ -84,7 +87,23 @@ var UIController = (function(){
         budget: document.querySelector('.budget__value'),
         totalInc: document.querySelector('.budget__income--value'),
         totalExp: document.querySelector('.budget__expenses--value'),
+        dateLabel: document.querySelector('.budget__title--month')
     }
+
+    var formatNumber = function(num, type){
+        var  numSplit, int, dec, type;
+        num = Math.abs(num);
+        num = num.toFixed(2);
+        
+        numSplit = num.split('.');
+        int = numSplit[0];
+        if (int.length > 3) {
+            int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3); //input 23510, output 23,510
+        }
+        dec = numSplit[1];
+        return (type === 'exp' ? '-' : '+') + int + '.' + dec;
+    }
+    
     return{
         getInputs: function(){
             return {
@@ -106,8 +125,8 @@ var UIController = (function(){
              }
              newHtml = html.replace('%id%', obj.id);
              console.log(obj.id);
-             newHtml = newHtml.replace('%Description%', obj.desc);
-             newHtml = newHtml.replace('%Value%', obj.val);
+             newHtml = newHtml.replace('%Description%',  obj.desc);
+             newHtml = newHtml.replace('%Value%', formatNumber(obj.val, type));
 
              document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
         }, 
@@ -121,9 +140,21 @@ var UIController = (function(){
             DOMitems.inputDesc.focus();
         },
         displayBudget: function(obj){
-            DOMitems.totalInc.textContent = String(obj.totals.inc);
-            DOMitems.totalExp.textContent = String(obj.totals.exp);
-            DOMitems.budget.textContent = String(obj.budget);
+            var type;
+            obj.budget > 0 ? type = 'inc' : type = 'exp';
+            DOMitems.totalInc.textContent =  formatNumber(obj.totals.inc, 'inc');
+            console.log(obj.totals.inc);
+            DOMitems.totalExp.textContent = formatNumber(obj.totals.exp, 'exp');
+            DOMitems.budget.textContent = formatNumber(obj.budget, type);
+        },
+        getMonth: function() {
+            var date, month, year;
+            date = new Date();
+            months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            month = date.getMonth();
+            year = date.getFullYear();
+            DOMitems.dateLabel.textContent = months[month] + ' ' + year;
+            
         }
     }
 
@@ -146,9 +177,9 @@ var controller = (function(budgetCtrl, UICtrl){
         let item = UICtrl.getInputs();
 
         //2.Add the item to the budget controller
-        budgetCtrl.addItem(item.type, item.desc, item.val);
-        console.log(item.type);
-        budgetCtrl.calcBudget(item.type);
+        budgetCtrl.addItem(item.type, item.desc, parseFloat(item.val));
+        console.log(item);
+        budgetCtrl.calcBudget();
 
         //3.Add the item to the UI
         UICtrl.addItemUI(item, item.type);
@@ -164,6 +195,7 @@ var controller = (function(budgetCtrl, UICtrl){
         init: function(){
             setupEventListeners();
             UICtrl.focusFirstInput();
+            UICtrl.getMonth();
         }
     }
     
